@@ -28,7 +28,11 @@ def evaluate_search_histories(
     for history_path in discover_histories(history_inputs):
         for surface in load_history(history_path):
             strategy = str(surface.metadata.get("strategy", "unknown"))
-            if strategy == "exhaustive" or surface.surface_id not in oracle:
+            # The immutable dataset supplies the full exhaustive oracle.  A
+            # benchmark input may still contain a separately capped exhaustive
+            # search, which is a strategy result and must be compared alongside
+            # random, annealing, Bayesian, and learned search.
+            if surface.surface_id not in oracle:
                 continue
             oracle_surface = oracle[surface.surface_id]
             oracle_best = min(oracle_surface.values())
@@ -110,4 +114,3 @@ def evaluate_search_histories(
     }
     write_json(output, result)
     return result
-

@@ -1,0 +1,7 @@
+# Exactly three rows are required. Array task N runs the GPU campaign and then
+# the CPU campaign on the same exclusive GPU node, writing both under PAIR_ROOT.
+# Paths must be absolute and contain no whitespace. Pair roots must be distinct
+# and non-overlapping. Manifest order fixes task 0=train, 1=validation, 2=test.
+/absolute/path/alpakaTune-ml/configs/campaign.rosi-gpu.yaml /absolute/path/alpakaTune-ml/configs/campaign.rosi-cpu.yaml /project/path/campaigns/pair-0
+/absolute/path/alpakaTune-ml/configs/campaign.rosi-gpu.yaml /absolute/path/alpakaTune-ml/configs/campaign.rosi-cpu.yaml /project/path/campaigns/pair-1
+/absolute/path/alpakaTune-ml/configs/campaign.rosi-gpu.yaml /absolute/path/alpakaTune-ml/configs/campaign.rosi-cpu.yaml /project/path/campaigns/pair-2

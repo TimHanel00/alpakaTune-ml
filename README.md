@@ -55,22 +55,24 @@ Install training or plotting dependencies only where needed:
 The rosi scripts use the site's compiler, CMake, CUDA, and Python modules and do
 not reinstall them. See [docs/rosi.md](docs/rosi.md).
 
-On Rosi, first run `hpc/rosi/setup-login.sh` interactively: it configures
-the pinned `alpaka3-tuner` submodule with CUDA enabled, builds from the ML build
-directory using `make -j`, and pre-creates the collection and training venvs.
-Collection, dataset construction, and training run through Slurm on compute
-nodes. The preferred GPU collection command is an exclusive, one-GPU-per-node
-array with no partition selection:
+On Rosi, first run `hpc/rosi/setup-login.sh` interactively: it configures the
+synced `alpaka3-tuner` source directly with CUDA and OpenMP enabled, CpuSerial
+disabled, builds with `make -j`, and pre-creates the collection and training
+venvs. Dependency sources are pre-synced and CMake runs fully disconnected; no
+Git metadata or network fetch is needed remotely. All measurements, dataset
+construction, training, merging, and comparison run through `sbatch`. The first
+experiment is an exact three-task array, with each task running GPU then CPU on
+one exclusive GPU node:
 
 ```bash
-source "$ALPAKATUNE_ML_BUILD/generated/alpakatune-paths.sh"
-export CAMPAIGN_ARRAY_FILE=/absolute/path/campaign-array.rosi-gpu.txt
-export CAMPAIGN_ARRAY_SHA256="$(sha256sum "$CAMPAIGN_ARRAY_FILE" | awk '{print $1}')"
+export PAIR_MANIFEST=/absolute/path/campaign-pairs.rosi.txt
+export DATASET_OUTPUT=/project/path/datasets/first-three-pairs
 export ALPAKATUNE_ML_VENV="$ALPAKATUNE_ML_SOURCE/.venv"
-sbatch --array=0-3%4 "$ALPAKATUNE_ML_SOURCE/hpc/rosi/collect-array.sbatch"
+"$ALPAKATUNE_ML_SOURCE/hpc/rosi/submit-collection-dataset.sh"
 ```
 
-An analogous CPU array is available as `hpc/rosi/collect-cpu-array.sbatch`.
+The dependent dataset job maps task 0 to train, task 1 to validation, and task 2
+to test, with one CPU and one GPU device in each split.
 The CMake, configuration, documentation, and scheduler assets are operational
 files from the Git checkout; they are intentionally not bundled into the Python
 wheel.
@@ -137,13 +139,13 @@ alpakatune-ml validate-splits \
 
 One `(workload context, device, legal candidate)` robust runtime is one label;
 the three raw timings improve that label and are not independent data points.
-Split ownership is by entire device, never random rows. The intended first
-cross-device campaign uses four CPU and four GPU architectures: two of each for
-training, one of each for validation, and one of each as untouched tests.
+Split ownership is by entire device, never random rows. The first Rosi experiment
+uses three disjoint CPU/GPU pairs: task 0 is training, task 1 is validation, and
+task 2 is the untouched test pair.
 
 The six examples listed in `configs/campaign.example.yaml` have nine contexts
 and 318,432 candidates per device at the currently pinned alpakaTune revision.
-The eight-device design therefore contains 2,547,456 labels and 7,642,368
+The six-device design therefore contains 1,910,592 labels and 5,731,776
 initial timed measurements; revisions that change spaces require recounting.
 The earlier single-A30 archive (32,635 labels, roughly 10.3%
 coverage) is useful only for pipeline prototyping and cannot support a

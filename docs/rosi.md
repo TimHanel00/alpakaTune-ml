@@ -1,178 +1,168 @@
 # Rosi workflow
 
-Rosi preparation happens interactively on a login node. Slurm jobs collect
-measurements, build datasets, or train models; they never configure/build
-alpakaTune, create a virtual environment, or install Python packages.
+Rosi receives an RSYNC snapshot without Git metadata. Do not run Git on Rosi.
+The login node is used only to configure/build the synced sources and create the
+two virtual environments. Collection, dataset construction, training, merging,
+baseline execution, strategy comparison, plotting, and evaluation all run as
+Slurm batch jobs.
 
-All scripts load the module stack verified interactively on Rosi:
+Every GPU job requests one node, one GPU, and `--exclusive`. No script selects a
+partition and no script uses `srun`.
+
+## 1. Prepare source dependencies locally
+
+Before RSYNC, copy the already checked-out FetchContent source trees into this
+layout (only source contents are needed; RSYNC excludes their `.git` metadata):
 
 ```text
-gcc/14.2.0
-cmake/4.0.3
-cuda/12.8
-python/3.12.4
+alpakaTune-ml/dependencies/
+  alpaka3/
+  yaml_cpp/
+  nlohmann_json/
 ```
 
-No script selects a Slurm partition. The GPU array requests one GPU with
-`--gres=gpu:1`, one node, and `--exclusive`. Consequently, every concurrently
-running array element owns a complete node; the array concurrency limit controls
-how many nodes can run at once.
+The expected local sources are the pinned trees normally found under the
+alpakaTune build's `_deps/alpaka3-src`, `_deps/yaml_cpp-src`, and
+`_deps/nlohmann_json-src`. Synchronize those three directories with targeted
+RSYNC operations. Rosi configuration uses `FETCHCONTENT_FULLY_DISCONNECTED=ON`
+and explicit `FETCHCONTENT_SOURCE_DIR_*` values, so CMake cannot clone or update
+them remotely.
 
-## 1. Sync and prepare on the login node
-
-Initialize the pinned dependency locally, synchronize the complete repository
-with the site command, log in, and select an absolute build path:
+## 2. Prepare the synced tree on the login node
 
 ```bash
-git submodule update --init --recursive
 RSYNC rosi
 ssh rosi
 
 export ALPAKATUNE_ML_SOURCE=/absolute/path/alpakaTune-ml
-export ALPAKATUNE_ML_BUILD=/absolute/path/alpakaTune-ml/build
-```
-
-Run the login-node setup once:
-
-```bash
+export ALPAKATUNE_ML_BUILD="$ALPAKATUNE_ML_SOURCE/build"
 bash "$ALPAKATUNE_ML_SOURCE/hpc/rosi/setup-login.sh"
 ```
 
-The script sources `hpc/rosi/modules.sh`, verifies the nested `alpaka3-tuner`
-checkout against the repository's gitlink, configures a Unix Makefiles build
-with CUDA and the examples enabled, leaves Rosi's login-node resource limits
-unchanged, and then runs exactly:
+The script configures `$ALPAKATUNE_ML_SOURCE/alpaka3-tuner` directly into
+`$ALPAKATUNE_ML_BUILD/alpaka3-tuner`, with CUDA and OpenMP enabled, CpuSerial
+disabled, and runtime tests disabled. It builds from that directory using
+`make -j`. It also configures and builds the pre-synced `dependencies/alpaka3`
+examples without alpakaTune instrumentation under
+`$ALPAKATUNE_ML_BUILD/alpaka-baseline`.
+
+The collection environment is `$ALPAKATUNE_ML_SOURCE/.venv` by default and
+includes plotting support. The training environment is
+`$ALPAKATUNE_ML_SOURCE/.venv-train` and supplies PyTorch. Override the dependency
+source root with `ALPAKATUNE_DEPENDENCY_ROOT`, the environment creation locations
+with `ALPAKATUNE_COLLECTION_VENV` and `ALPAKATUNE_TRAINING_VENV`, and the paths
+passed to jobs with `ALPAKATUNE_ML_VENV` and `ALPAKATUNE_TRAINING_VENV`.
+
+## 3. Define three CPU/GPU pairs
+
+Before synchronization, copy the two campaign templates, replace their three
+revision placeholders with immutable source identifiers, and create the site
+manifest:
 
 ```bash
-(cd "$ALPAKATUNE_ML_BUILD" && make -j)
+cp configs/campaign.example.yaml configs/campaign.rosi-gpu.yaml
+cp configs/campaign.cpu.example.yaml configs/campaign.rosi-cpu.yaml
+cp configs/campaign-pairs.example.txt configs/campaign-pairs.rosi.txt
 ```
 
-The nested source and build paths are generated from that pinned checkout. A
-script run in a child shell cannot export variables back into the login shell,
-so load them once before preparing campaign files or submitting collection
-jobs:
+The GPU template explicitly uses `cuda:nvidiaGpu` plus `gpuCuda`; the CPU
+template uses `host:cpu` plus `cpuOmpBlocks`. The pair manifest contains exactly
+three non-comment rows:
 
-```bash
-source "$ALPAKATUNE_ML_BUILD/generated/alpakatune-paths.sh"
+```text
+GPU_CONFIG CPU_CONFIG PAIR_OUTPUT
 ```
 
-It also creates two project-local environments on the login node:
+Paths are absolute and contain no whitespace. Manifest row N is array task N.
+Each task runs GPU and then CPU sequentially on the same exclusive GPU node and
+writes:
 
-- `$ALPAKATUNE_ML_SOURCE/.venv` contains collection/dataset dependencies.
-- `$ALPAKATUNE_ML_SOURCE/.venv-train` contains the training extra and PyTorch.
-
-Rosi has no PyTorch module; compiler, CMake, CUDA, and Python still come only
-from modules. To place venvs elsewhere, set `ALPAKATUNE_COLLECTION_VENV` and
-`ALPAKATUNE_TRAINING_VENV` while running setup, then pass the selected path as
-`ALPAKATUNE_ML_VENV` to the corresponding job.
-
-Create site campaign files from the examples and replace all three revision
-placeholders with full immutable commits. Keep `platform.device_id: auto`:
-
-```bash
-cp "$ALPAKATUNE_ML_SOURCE/configs/campaign.example.yaml" \
-   "$ALPAKATUNE_ML_SOURCE/configs/campaign.rosi-gpu.yaml"
-cp "$ALPAKATUNE_ML_SOURCE/configs/campaign.cpu.example.yaml" \
-   "$ALPAKATUNE_ML_SOURCE/configs/campaign.rosi-cpu.yaml"
+```text
+PAIR_OUTPUT/
+  allocation.json
+  gpu/campaign.json
+  cpu/campaign.json
 ```
 
-`auto` resolves to the device ID persisted by the first validated history and
-requires every later context in that campaign to report the same device. The
-resolved value is written to `campaign.json`. Resuming also validates completed
-histories before skipping them.
+`allocation.json` records the node, CPU model, visible GPU UUID/name/memory, and
+Slurm attempt IDs. Resubmission uses `--resume`; an allocation with a different
+node or GPU identity is rejected rather than mixed with partial results.
 
-## 2. Submit the GPU collection array
-
-Create an absolute-path manifest following
-`configs/campaign-array.example.txt`. Each non-comment line contains exactly a
-campaign YAML and a unique output directory. For four lines:
+## 4. Submit collection and dataset construction
 
 ```bash
-export CAMPAIGN_ARRAY_FILE=/absolute/path/campaign-array.rosi-gpu.txt
-export CAMPAIGN_ARRAY_SHA256="$(sha256sum "$CAMPAIGN_ARRAY_FILE" | awk '{print $1}')"
+export ALPAKATUNE_ML_SOURCE=/absolute/path/alpakaTune-ml
+export PAIR_MANIFEST=/absolute/path/alpakaTune-ml/configs/campaign-pairs.rosi.txt
+export DATASET_OUTPUT=/project/path/datasets/first-three-pairs
 export ALPAKATUNE_ML_VENV="$ALPAKATUNE_ML_SOURCE/.venv"
 
-sbatch --array=0-3%4 \
-  "$ALPAKATUNE_ML_SOURCE/hpc/rosi/collect-array.sbatch"
+"$ALPAKATUNE_ML_SOURCE/hpc/rosi/submit-collection-dataset.sh"
 ```
 
-There is deliberately no `--partition`. `--array=0-3%4` allows four elements to
-run concurrently; each requests `--nodes=1`, `--gres=gpu:1`, and `--exclusive`
-from the script, so Slurm allocates one exclusive node per running element.
+The noninteractive helper validates and hashes the manifest, submits
+`collect-paired-array.sbatch` as exactly `0-2`, then submits
+`prepare-dataset.sbatch` with `afterok` on the complete array. It prints both job
+IDs. The legacy `collect-array.sbatch` interface remains available unchanged for
+older independent manifests.
 
-The submitted IDs must be exactly `0..N-1`, where `N` is the number of
-non-comment manifest entries; `%4` only limits concurrency. Every task checks
-that shape and the immutable manifest checksum before selecting its row. The
-wrapper normalizes all paths and rejects duplicate or nested output roots, so
-array elements cannot intentionally write the same campaign tree. Do not edit
-the manifest after computing `CAMPAIGN_ARRAY_SHA256`.
+The dataset job validates all six full-exhaustive campaigns and requires six
+unique device IDs. Repeated hardware models across tasks fail rather than being
+presented as cross-device generalization. Split assignment is automatic:
 
-Slurm may assign the same GPU model to multiple elements. After completion,
-inspect each output's resolved `campaign.json` and retain/merge campaigns by
-device ID deliberately; array execution alone does not guarantee four distinct
-GPU architectures.
+- task 0 CPU + GPU: train;
+- task 1 CPU + GPU: validation;
+- task 2 CPU + GPU: test.
 
-For a single campaign instead, export `CAMPAIGN_CONFIG` and `CAMPAIGN_OUTPUT`
-and submit `hpc/rosi/collect.sbatch`.
+The generated split YAML defaults to `${DATASET_OUTPUT}.splits.yaml`; override it
+with `PAIR_SPLIT_CONFIG`. A completed immutable dataset is checksum-validated and
+skipped on resubmission. A partial nonempty dataset remains a hard error.
 
-## 3. Submit the analogous CPU collection array
-
-Use `configs/campaign-cpu-array.example.txt` with the CPU campaign YAML:
+## 5. Submit three-member training and merge
 
 ```bash
-export CAMPAIGN_ARRAY_FILE=/absolute/path/campaign-array.rosi-cpu.txt
-export CAMPAIGN_ARRAY_SHA256="$(sha256sum "$CAMPAIGN_ARRAY_FILE" | awk '{print $1}')"
-export ALPAKATUNE_ML_VENV="$ALPAKATUNE_ML_SOURCE/.venv"
-
-sbatch --array=0-3%4 \
-  "$ALPAKATUNE_ML_SOURCE/hpc/rosi/collect-cpu-array.sbatch"
-```
-
-The CPU array also requests one exclusive node per running element and no
-partition, but it does not request a GPU. `device_id:auto` records the assigned
-CPU model. `hpc/rosi/collect-cpu.sbatch` remains the single-campaign equivalent.
-
-## 4. Submit dataset construction
-
-After choosing one complete campaign per intended device and defining strict
-whole-device splits, submit dataset validation/preparation to a compute node:
-
-```bash
-export HISTORY_ROOTS=/project/path/campaigns
-export SPLIT_CONFIG="$ALPAKATUNE_ML_SOURCE/configs/splits.rosi.yaml"
-export DATASET_OUTPUT=/project/path/datasets/cross-device-v1
-export ALPAKATUNE_ML_VENV="$ALPAKATUNE_ML_SOURCE/.venv"
-
-sbatch "$ALPAKATUNE_ML_SOURCE/hpc/rosi/prepare-dataset.sbatch"
-```
-
-Bulk histories, datasets, checkpoints, and models belong in project/scratch
-storage, not in either Git checkout or the later `RSYNC rosi` transfer.
-
-## 5. Submit training
-
-The three ensemble members can train independently on three array nodes. A
-short dependency job validates their preprocessing, feature schema, dataset,
-configuration, indexes, and seeds; evaluates the untouched test split; and
-emits the normal ATMLART1 ensemble:
-
-```bash
-export DATASET_ROOT=/project/path/datasets/cross-device-v1
+export DATASET_ROOT=/project/path/datasets/first-three-pairs
 export TRAINING_CONFIG="$ALPAKATUNE_ML_SOURCE/configs/training.rosi.example.yaml"
-export MODEL_MEMBER_DIR=/project/path/models/cross-device-v1-members
-export MODEL_OUTPUT=/project/path/models/cross-device-v1.atml
+export MODEL_MEMBER_DIR=/project/path/models/first-three-pairs-members
+export MODEL_OUTPUT=/project/path/models/first-three-pairs.atml
 export ALPAKATUNE_TRAINING_VENV="$ALPAKATUNE_ML_SOURCE/.venv-train"
 
 "$ALPAKATUNE_ML_SOURCE/hpc/rosi/submit-training-array.sh"
 ```
 
-The helper derives the exact `0-(ensemble_size-1)` array from the training
-config and submits `merge-members.sbatch` with an `afterok` dependency. Each
-running member requests one exclusive GPU node and no partition. Member jobs
-use training and validation labels only for model and epoch selection; test
-labels are evaluated only by the merge job. The original single-node
-`train.sbatch` remains available for small runs and parity checks.
+With the provided configuration this submits member array `0-2` and an `afterok`
+merge. Each member owns an exclusive GPU node. Members select using only train
+and validation labels; the merge validates provenance and evaluates test labels.
 
-Before promoting a result, run evaluation and the native alpakaTune latency
-benchmark, verify the model card/checksum, and confirm untouched test-device
-metrics. The helper prints both submitted job IDs.
+## 6. Submit same-node strategy comparison
+
+```bash
+export COMPARE_OUTPUT=/project/path/evaluations/first-three-pairs
+export MODEL_ARTIFACT=/project/path/models/first-three-pairs.atml
+export ORACLE_MANIFEST=/project/path/datasets/first-three-pairs/test.manifest.json
+export COMPARE_NODE=the-node-recorded-in-pair-2-allocation.json
+# Optional when submitting before the model merge has completed:
+export MERGE_JOB_ID=123456
+export ALPAKATUNE_ML_VENV="$ALPAKATUNE_ML_SOURCE/.venv"
+
+"$ALPAKATUNE_ML_SOURCE/hpc/rosi/submit-comparison.sh"
+```
+
+The helper pins the job with `--nodelist=$COMPARE_NODE`; when `MERGE_JOB_ID` is
+set it also uses `--dependency=afterok:$MERGE_JOB_ID`. It never selects a
+partition. The exclusive GPU-node job records its allocation, runs the instrumentation-free
+Alpaka examples ten times, then runs one GPU and one OpenMP benchmark campaign.
+Each uses a 40,000-execution cap with exhaustive, random, simulated annealing,
+Bayesian optimization, and learned-hybrid in one invocation of the core benchmark
+runner, with `--model`, `--tune-until-terminal`, and `--resume`. Learned-hybrid
+uses `MODEL_ARTIFACT`; the other strategies remain model-independent.
+
+The job then creates the benchmark plots/dashboard and invokes
+`alpakatune-ml evaluate-search` for both backends. `ORACLE_MANIFEST` must contain
+the same device model as the comparison allocation for surface IDs to match.
+Override the default whitespace-separated example list with `COMPARE_EXAMPLES`.
+The baseline raw logs contain every enabled backend; the summary provides
+separate CpuOmpBlocks and GpuCuda runtime overlays where the upstream example
+reports a comparable kernel or time-step duration.
+
+Campaigns, datasets, models, and comparisons belong in project/scratch storage,
+outside the RSYNC source checkout.
