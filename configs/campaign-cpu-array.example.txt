@@ -1,0 +1,8 @@
+# One complete CPU campaign per zero-based array element. Paths must be absolute
+# and must not contain whitespace; output roots must be distinct and
+# non-overlapping. Slurm assigns one exclusive node to each concurrent element,
+# but repeated entries do not guarantee distinct CPU architectures.
+/absolute/path/alpakaTune-ml/configs/campaign.cpu.example.yaml /project/path/campaigns/cpu-task-0
+/absolute/path/alpakaTune-ml/configs/campaign.cpu.example.yaml /project/path/campaigns/cpu-task-1
+/absolute/path/alpakaTune-ml/configs/campaign.cpu.example.yaml /project/path/campaigns/cpu-task-2
+/absolute/path/alpakaTune-ml/configs/campaign.cpu.example.yaml /project/path/campaigns/cpu-task-3

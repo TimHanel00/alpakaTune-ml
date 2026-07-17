@@ -1,0 +1,31 @@
+{
+  "schema_version": 9,
+  "contexts": {
+    "fixture-context": {
+      "candidate_count": 2,
+      "candidate_configurations": [
+        {"blockSize": 64},
+        {"blockSize": 128}
+      ],
+      "candidate_samples": [
+        [0.000012, 0.000011, 0.000013],
+        [0.000009, 0.000010, 0.0000095]
+      ],
+      "candidate_estimates": [0.000012, 0.0000095],
+      "rejected_candidates": [false, false],
+      "retired_configuration_count": 2,
+      "completion_reason": "all_configurations",
+      "execution_budget_reached": false,
+      "metadata": {
+        "strategy": "exhaustive",
+        "device": "Fixture GPU",
+        "device_descriptor": {"id": "gpu-train", "class": "gpu"},
+        "kernel": "VectorAddKernel",
+        "identity_entries": ["executor=GpuCuda", "workload=vectorAdd"],
+        "launch_specification": "FrameSpec{{64},{256}, executor=GpuCuda}",
+        "workload_id": "vectorAdd/default"
+      }
+    }
+  }
+}
+

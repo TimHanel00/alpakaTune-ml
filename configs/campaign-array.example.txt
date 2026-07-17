@@ -1,0 +1,9 @@
+# One complete exhaustive campaign per zero-based array element. Config and
+# output paths must be absolute and must not contain whitespace. Output roots
+# must be distinct and non-overlapping. Repeating an auto-device campaign is
+# valid, but Slurm does not guarantee that repeated entries land on different
+# GPU architectures; use separate constrained arrays when architecture matters.
+/absolute/path/alpakaTune-ml/configs/campaign.example.yaml /project/path/campaigns/gpu-task-0
+/absolute/path/alpakaTune-ml/configs/campaign.example.yaml /project/path/campaigns/gpu-task-1
+/absolute/path/alpakaTune-ml/configs/campaign.example.yaml /project/path/campaigns/gpu-task-2
+/absolute/path/alpakaTune-ml/configs/campaign.example.yaml /project/path/campaigns/gpu-task-3

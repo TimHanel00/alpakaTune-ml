@@ -1,0 +1,64 @@
+schema_version: 1
+name: rosi-cuda-full-space-v1
+base_tuning_config: ${ALPAKATUNE_SOURCE}/config/alpakaTune.yaml
+revisions:
+  # Replace these placeholders with immutable commits before collection.
+  alpakatune: REPLACE_WITH_COMMIT
+  alpaka: REPLACE_WITH_COMMIT
+  collector: REPLACE_WITH_COMMIT
+platform:
+  # Each campaign resolves this once from its first validated history.
+  device_id: auto
+  device_class: gpu
+environment: {}
+runs:
+  - name: boundaryIter
+    workload_id: boundaryIter/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/boundaryIter/alpakaTune_boundaryIter
+      - --backend
+      - cuda:nvidiaGpu
+      - --executor
+      - gpuCuda
+  - name: grayScale
+    workload_id: grayScale/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/grayScale/alpakaTune_grayScale
+      - --backend
+      - cuda:nvidiaGpu
+      - --executor
+      - gpuCuda
+  - name: vectorAdd
+    workload_id: vectorAdd/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/vectorAdd/alpakaTune_vectorAdd
+      - --backend
+      - cuda:nvidiaGpu
+      - --executor
+      - gpuCuda
+  - name: matrixMultiplication
+    workload_id: matrixMultiplication/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/matrixMultiplication/alpakaTune_matrixMultiplication
+      - --backend
+      - cuda:nvidiaGpu
+      - --executor
+      - gpuCuda
+  - name: heatEquation2D
+    workload_id: heatEquation2D/full
+    command:
+      - ${ALPAKATUNE_BUILD}/example/heatEquation2D/alpakaTune_heatEquation2D
+      - --backend
+      - cuda:nvidiaGpu
+      - --executor
+      - gpuCuda
+      - --tune-until-complete
+  - name: nBody
+    workload_id: nBody/full
+    command:
+      - ${ALPAKATUNE_BUILD}/example/nBody/alpakaTune_nBody
+      - --backend
+      - cuda:nvidiaGpu
+      - --executor
+      - gpuCuda
+      - --tune-until-complete

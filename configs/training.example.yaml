@@ -1,0 +1,13 @@
+schema_version: 1
+seed: 1729
+epochs: 40
+pairs_per_epoch: 4096
+batch_size: 128
+learning_rate: 0.001
+ranking_weight: 1.0
+runtime_weight: 0.1
+fast_decile_weight: 4.0
+device: cpu
+token_hidden_sizes: [16, 32]
+embedding_size: 32
+ensemble_size: 3

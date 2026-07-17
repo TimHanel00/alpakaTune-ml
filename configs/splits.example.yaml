@@ -1,0 +1,8 @@
+schema_version: 1
+train:
+  devices: [cpu-train-1, cpu-train-2, gpu-train-1, gpu-train-2]
+validation:
+  devices: [cpu-validation-1, gpu-validation-1]
+test:
+  devices: [cpu-test-1, gpu-test-1]
+

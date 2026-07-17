@@ -1,0 +1,3 @@
+[submodule "alpaka3-tuner"]
+	path = alpaka3-tuner
+	url = https://github.com/TimHanel00/alpaka3-tuner.git

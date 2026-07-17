@@ -1,0 +1,63 @@
+schema_version: 1
+name: rosi-cpu-full-space-v1
+base_tuning_config: ${ALPAKATUNE_SOURCE}/config/alpakaTune.yaml
+revisions:
+  # Replace these placeholders with immutable commits before collection.
+  alpakatune: REPLACE_WITH_COMMIT
+  alpaka: REPLACE_WITH_COMMIT
+  collector: REPLACE_WITH_COMMIT
+platform:
+  device_id: auto
+  device_class: cpu
+environment: {}
+runs:
+  - name: boundaryIter
+    workload_id: boundaryIter/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/boundaryIter/alpakaTune_boundaryIter
+      - --backend
+      - host:cpu
+      - --executor
+      - cpuOmpBlocks
+  - name: grayScale
+    workload_id: grayScale/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/grayScale/alpakaTune_grayScale
+      - --backend
+      - host:cpu
+      - --executor
+      - cpuOmpBlocks
+  - name: vectorAdd
+    workload_id: vectorAdd/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/vectorAdd/alpakaTune_vectorAdd
+      - --backend
+      - host:cpu
+      - --executor
+      - cpuOmpBlocks
+  - name: matrixMultiplication
+    workload_id: matrixMultiplication/default
+    command:
+      - ${ALPAKATUNE_BUILD}/example/matrixMultiplication/alpakaTune_matrixMultiplication
+      - --backend
+      - host:cpu
+      - --executor
+      - cpuOmpBlocks
+  - name: heatEquation2D
+    workload_id: heatEquation2D/full
+    command:
+      - ${ALPAKATUNE_BUILD}/example/heatEquation2D/alpakaTune_heatEquation2D
+      - --backend
+      - host:cpu
+      - --executor
+      - cpuOmpBlocks
+      - --tune-until-complete
+  - name: nBody
+    workload_id: nBody/full
+    command:
+      - ${ALPAKATUNE_BUILD}/example/nBody/alpakaTune_nBody
+      - --backend
+      - host:cpu
+      - --executor
+      - cpuOmpBlocks
+      - --tune-until-complete
