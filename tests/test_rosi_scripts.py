@@ -38,6 +38,14 @@ def test_module_setup_accepts_optional_experiment_defaults():
     assert 'source "${experiment_defaults}"' in script
 
 
+def test_sbatch_copies_fall_back_to_the_synchronized_script_directory():
+    for path in ROSI.glob("*.sbatch"):
+        script = path.read_text(encoding="utf-8")
+        if "BASH_SOURCE[0]" in script:
+            assert "ALPAKATUNE_ROSI_SCRIPT_DIR" in script, path.name
+            assert "/home/th168408/workspace/alpakaTune-ml/hpc/rosi" in script, path.name
+
+
 def test_experiment_01_is_concrete_and_checksum_pinned():
     experiment = ROOT / "configs/rosi/experiment-01"
     gpu = yaml.safe_load((experiment / "campaign-gpu.yaml").read_text(encoding="utf-8"))

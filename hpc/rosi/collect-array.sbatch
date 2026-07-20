@@ -11,6 +11,9 @@
 
 set -euo pipefail
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -r "${script_directory}/modules.sh" ]]; then
+    script_directory="${ALPAKATUNE_ROSI_SCRIPT_DIR:-/home/th168408/workspace/alpakaTune-ml/hpc/rosi}"
+fi
 source "${script_directory}/modules.sh"
 
 : "${SLURM_ARRAY_TASK_ID:?submit this script with sbatch --array=...}"

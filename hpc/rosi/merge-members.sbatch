@@ -9,6 +9,9 @@
 
 set -euo pipefail
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -r "${script_directory}/modules.sh" ]]; then
+    script_directory="${ALPAKATUNE_ROSI_SCRIPT_DIR:-/home/th168408/workspace/alpakaTune-ml/hpc/rosi}"
+fi
 source "${script_directory}/modules.sh"
 
 : "${ALPAKATUNE_ML_SOURCE:?set ALPAKATUNE_ML_SOURCE}"

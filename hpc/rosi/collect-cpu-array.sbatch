@@ -12,5 +12,7 @@
 # collection behavior. Only this allocation header differs: no GPU is requested.
 set -euo pipefail
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -r "${script_directory}/collect-array.sbatch" ]]; then
+    script_directory="${ALPAKATUNE_ROSI_SCRIPT_DIR:-/home/th168408/workspace/alpakaTune-ml/hpc/rosi}"
+fi
 exec bash "${script_directory}/collect-array.sbatch"
-
