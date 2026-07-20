@@ -17,7 +17,9 @@ unapproved artifacts remain outside both Git repositories.
 - Current alpakaTune history schema-v9 import and preferred structured
   schema-v10 import.
 - Immutable JSONL datasets with mandatory train, validation, and test manifests.
-  Devices, surfaces, and row IDs must be disjoint across all three splits.
+  Whole-device datasets reject device, surface, and row leakage. Explicit
+  configuration-holdout datasets reject row leakage and aggregate repeated
+  measurements before deterministically assigning configurations.
 - A compact, width-configurable three-member DeepSets ranker trained from random initialization with
   surface-balanced pair sampling, extra weight on the fastest decile, and an
   auxiliary log-runtime loss.
@@ -138,10 +140,13 @@ alpakatune-ml validate-splits \
 ```
 
 One `(workload context, device, legal candidate)` robust runtime is one label;
-the three raw timings improve that label and are not independent data points.
-Split ownership is by entire device, never random rows. The first Rosi experiment
-uses three disjoint CPU/GPU pairs: task 0 is training, task 1 is validation, and
-task 2 is the untouched test pair.
+the raw timings improve that label and are not independent data points.
+Cross-architecture claims require whole-device splits. Rosi experiment 01 is an
+A100-only pipeline check: its three repeated surfaces are median-aggregated,
+then configurations are deterministically split 80/10/10 with disjoint row IDs.
+It does not make an architecture-generalization claim. A subsequent targeted
+V100/A100/H100 campaign must restore whole-device splitting and hold out an
+entire architecture for final evaluation.
 
 The six examples listed in `configs/campaign.example.yaml` have nine contexts
 and 318,432 candidates per device at the currently pinned alpakaTune revision.

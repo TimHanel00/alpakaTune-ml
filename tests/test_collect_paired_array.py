@@ -219,3 +219,23 @@ def test_pair_tools_reject_reused_device_across_splits(tmp_path):
     )
     assert completed.returncode == 2
     assert "six unique device IDs" in completed.stderr
+    configuration_splits = tmp_path / "configuration-splits.yaml"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(PAIR_TOOLS),
+            "prepare-splits",
+            str(manifest),
+            "--output",
+            str(configuration_splits),
+            "--policy",
+            "configuration",
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    document = yaml.safe_load(configuration_splits.read_text(encoding="utf-8"))
+    assert document["policy"] == "configuration"
+    assert document["fractions"] == {"train": 0.8, "validation": 0.1, "test": 0.1}

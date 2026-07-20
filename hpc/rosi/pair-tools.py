@@ -233,7 +233,7 @@ def completed_campaign(path: Path, expected_class: str) -> str:
     return device_id
 
 
-def prepare_splits(manifest: Path, output: Path) -> None:
+def prepare_splits(manifest: Path, output: Path, policy: str, seed: int) -> None:
     rows = manifest_rows(manifest)
     split_names = ("train", "validation", "test")
     split_document: dict[str, Any] = {"schema_version": 1}
@@ -250,7 +250,8 @@ def prepare_splits(manifest: Path, output: Path) -> None:
         gpu_id = completed_campaign(pair_root / "gpu/campaign.json", "gpu")
         cpu_id = completed_campaign(pair_root / "cpu/campaign.json", "cpu")
         devices = [cpu_id, gpu_id]
-        split_document[split_names[index]] = {"devices": devices}
+        if policy == "whole_device":
+            split_document[split_names[index]] = {"devices": devices}
         all_devices.extend(devices)
         pair_metadata.append(
             {
@@ -261,8 +262,16 @@ def prepare_splits(manifest: Path, output: Path) -> None:
                 "gpu_device_id": gpu_id,
             }
         )
-    if len(set(all_devices)) != 2 * EXPECTED_PAIRS:
+    if policy == "whole_device" and len(set(all_devices)) != 2 * EXPECTED_PAIRS:
         fail(f"three disjoint CPU/GPU pairs require six unique device IDs, observed {all_devices}")
+    if policy == "configuration":
+        split_document.update(
+            {
+                "policy": "configuration",
+                "seed": seed,
+                "fractions": {"train": 0.8, "validation": 0.1, "test": 0.1},
+            }
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     temporary.write_text(yaml.safe_dump(split_document, sort_keys=False), encoding="utf-8")
@@ -284,6 +293,8 @@ def parser() -> argparse.ArgumentParser:
     splits = commands.add_parser("prepare-splits")
     splits.add_argument("manifest", type=Path)
     splits.add_argument("--output", type=Path, required=True)
+    splits.add_argument("--policy", choices=("whole_device", "configuration"), default="whole_device")
+    splits.add_argument("--seed", type=int, default=1729)
     return result
 
 
@@ -302,7 +313,7 @@ def main() -> int:
                 fail("pair index must be 0, 1, or 2")
             record_allocation(arguments.output, arguments.pair_index, arguments.kind)
         elif arguments.command == "prepare-splits":
-            prepare_splits(arguments.manifest, arguments.output)
+            prepare_splits(arguments.manifest, arguments.output, arguments.policy, arguments.seed)
         return 0
     except (OSError, ValueError, json.JSONDecodeError) as exception:
         print(f"error: {exception}", file=sys.stderr)

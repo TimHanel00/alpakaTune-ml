@@ -36,7 +36,9 @@ def _parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate-histories", help="require complete exhaustive histories")
     validate.add_argument("inputs", nargs="+", type=Path)
 
-    dataset = subparsers.add_parser("build-dataset", help="write strict whole-device splits")
+    dataset = subparsers.add_parser(
+        "build-dataset", help="write strict whole-device or configuration splits"
+    )
     dataset.add_argument("inputs", nargs="+", type=Path)
     dataset.add_argument("--splits", type=Path, required=True)
     dataset.add_argument("--output", type=Path, required=True)

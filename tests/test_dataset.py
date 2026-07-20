@@ -38,6 +38,28 @@ def _split_config(tmp_path):
     return path
 
 
+def _repeated_configuration_history(tmp_path, repeat, runtime_offset):
+    document = json.loads(FIXTURE.read_text())
+    context = document["contexts"]["fixture-context"]
+    context["metadata"]["device"] = "Repeated A100"
+    context["metadata"]["device_descriptor"] = {"id": "nvidia-a100", "class": "gpu"}
+    context["candidate_count"] = 10
+    context["candidate_configurations"] = [{"blockSize": 32 * (index + 1)} for index in range(10)]
+    context["candidate_samples"] = [
+        [runtime_offset + index * 1.0e-6 + sample * 1.0e-8 for sample in range(3)]
+        for index in range(10)
+    ]
+    context["candidate_estimates"] = [
+        sorted(samples)[1] for samples in context["candidate_samples"]
+    ]
+    context["rejected_candidates"] = [False] * 10
+    context["retired_configuration_count"] = 10
+    path = tmp_path / f"repeat-{repeat}" / "history.json"
+    path.parent.mkdir()
+    path.write_text(json.dumps(document))
+    return path
+
+
 def test_dataset_requires_whole_device_splits(tmp_path):
     histories = [
         _history(tmp_path, "gpu-train", "gpu"),
@@ -125,3 +147,43 @@ def test_validation_rejects_row_id_leakage_even_when_surfaces_differ(tmp_path):
                 test_manifest_path,
             ]
         )
+
+
+def test_configuration_split_aggregates_repeats_and_holds_out_rows(tmp_path):
+    histories = [
+        _repeated_configuration_history(tmp_path, repeat, 1.0e-5 + repeat * 1.0e-7)
+        for repeat in range(3)
+    ]
+    split_config = tmp_path / "configuration-splits.yaml"
+    split_config.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": 1,
+                "policy": "configuration",
+                "seed": 1729,
+                "fractions": {"train": 0.8, "validation": 0.1, "test": 0.1},
+            }
+        )
+    )
+    output = tmp_path / "configuration-dataset"
+    manifest = build_dataset(histories, split_config, output)
+    assert manifest["split_policy"] == "configuration"
+    assert manifest["row_count"] == 10
+    assert manifest["replicate_label_count"] == 30
+    splits = validate_split_set(
+        [
+            output / "train.manifest.json",
+            output / "validation.manifest.json",
+            output / "test.manifest.json",
+        ]
+    )
+    assert {name: len(rows) for name, rows in splits.items()} == {
+        "train": 8,
+        "validation": 1,
+        "test": 1,
+    }
+    assert all(
+        row["source"]["replicate_count"] == 3
+        for rows in splits.values()
+        for row in rows
+    )

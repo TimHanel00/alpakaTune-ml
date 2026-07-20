@@ -46,7 +46,8 @@ if [[ -f "${DATASET_OUTPUT}/dataset.manifest.json" ]]; then
 fi
 
 "${ml_venv}/bin/python" "${pair_tools}" prepare-splits \
-    "${PAIR_MANIFEST}" --output "${split_config}"
+    "${PAIR_MANIFEST}" --output "${split_config}" \
+    --policy "${DATASET_SPLIT_POLICY:-whole_device}"
 mapfile -t history_roots < <(
     "${ml_venv}/bin/python" "${pair_tools}" roots "${PAIR_MANIFEST}"
 )

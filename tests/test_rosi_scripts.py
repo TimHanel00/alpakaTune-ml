@@ -72,6 +72,7 @@ def test_experiment_01_is_concrete_and_checksum_pinned():
     defaults = (ROSI / "experiment-01.env.sh").read_text(encoding="utf-8")
     assert digest in defaults
     assert "/home/th168408/workspace/alpakaTune-ml-runs/experiment-01" in defaults
+    assert 'DATASET_SPLIT_POLICY="${DATASET_SPLIT_POLICY:-configuration}"' in defaults
 
 
 def test_gpu_jobs_are_exclusive_across_all_gpu_partitions_without_srun():
