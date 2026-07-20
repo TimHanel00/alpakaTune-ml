@@ -1,0 +1,4 @@
+# Array task 0=train, 1=validation, 2=test. Each task runs GPU then CPU.
+/home/th168408/workspace/alpakaTune-ml/configs/rosi/experiment-01/campaign-gpu.yaml /home/th168408/workspace/alpakaTune-ml/configs/rosi/experiment-01/campaign-cpu.yaml /home/th168408/workspace/alpakaTune-ml-runs/experiment-01/campaigns/rosi/experiment-01/pair-0
+/home/th168408/workspace/alpakaTune-ml/configs/rosi/experiment-01/campaign-gpu.yaml /home/th168408/workspace/alpakaTune-ml/configs/rosi/experiment-01/campaign-cpu.yaml /home/th168408/workspace/alpakaTune-ml-runs/experiment-01/campaigns/rosi/experiment-01/pair-1
+/home/th168408/workspace/alpakaTune-ml/configs/rosi/experiment-01/campaign-gpu.yaml /home/th168408/workspace/alpakaTune-ml/configs/rosi/experiment-01/campaign-cpu.yaml /home/th168408/workspace/alpakaTune-ml-runs/experiment-01/campaigns/rosi/experiment-01/pair-2

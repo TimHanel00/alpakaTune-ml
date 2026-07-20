@@ -1,0 +1,30 @@
+schema_version: 1
+name: rosi-experiment-01-cuda-full-space
+base_tuning_config: ${ALPAKATUNE_SOURCE}/config/alpakaTune.yaml
+revisions:
+  alpakatune: 0d3f91cd787d4c76c2b9b9eb9908be179dd1a30c
+  alpaka: 2c7ec1e2c27a006de6c26f1368c4718f12827727
+  collector: d8578393633aafe81d74c9f9173bef424dc0e210
+platform:
+  device_id: auto
+  device_class: gpu
+environment: {}
+runs:
+  - name: boundaryIter
+    workload_id: boundaryIter/default
+    command: ["${ALPAKATUNE_BUILD}/example/boundaryIter/alpakaTune_boundaryIter", --backend, cuda:nvidiaGpu, --executor, gpuCuda]
+  - name: grayScale
+    workload_id: grayScale/default
+    command: ["${ALPAKATUNE_BUILD}/example/grayScale/alpakaTune_grayScale", --backend, cuda:nvidiaGpu, --executor, gpuCuda]
+  - name: heatEquation2D
+    workload_id: heatEquation2D/full
+    command: ["${ALPAKATUNE_BUILD}/example/heatEquation2D/alpakaTune_heatEquation2D", --backend, cuda:nvidiaGpu, --executor, gpuCuda, --tune-until-complete]
+  - name: matrixMultiplication
+    workload_id: matrixMultiplication/default
+    command: ["${ALPAKATUNE_BUILD}/example/matrixMultiplication/alpakaTune_matrixMultiplication", --backend, cuda:nvidiaGpu, --executor, gpuCuda]
+  - name: nBody
+    workload_id: nBody/full
+    command: ["${ALPAKATUNE_BUILD}/example/nBody/alpakaTune_nBody", --backend, cuda:nvidiaGpu, --executor, gpuCuda, --tune-until-complete]
+  - name: vectorAdd
+    workload_id: vectorAdd/default
+    command: ["${ALPAKATUNE_BUILD}/example/vectorAdd/alpakaTune_vectorAdd", --backend, cuda:nvidiaGpu, --executor, gpuCuda]

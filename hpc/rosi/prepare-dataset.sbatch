@@ -61,3 +61,5 @@ fi
     --train "${DATASET_OUTPUT}/train.manifest.json" \
     --validation "${DATASET_OUTPUT}/validation.manifest.json" \
     --test "${DATASET_OUTPUT}/test.manifest.json"
+cp -- "${split_config}" "${DATASET_OUTPUT}/splits.yaml"
+cp -- "${split_config}.pairs.json" "${DATASET_OUTPUT}/pairs.json"

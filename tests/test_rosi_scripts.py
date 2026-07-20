@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 import subprocess
+
+import yaml
 
 
 ROOT = Path(__file__).parents[1]
@@ -33,6 +36,31 @@ def test_module_setup_accepts_optional_experiment_defaults():
     script = (ROSI / "modules.sh").read_text(encoding="utf-8")
     assert 'experiment-01.env.sh' in script
     assert 'source "${experiment_defaults}"' in script
+
+
+def test_experiment_01_is_concrete_and_checksum_pinned():
+    experiment = ROOT / "configs/rosi/experiment-01"
+    gpu = yaml.safe_load((experiment / "campaign-gpu.yaml").read_text(encoding="utf-8"))
+    cpu = yaml.safe_load((experiment / "campaign-cpu.yaml").read_text(encoding="utf-8"))
+    assert len(gpu["runs"]) == len(cpu["runs"]) == 6
+    assert all("cuda:nvidiaGpu" in run["command"] for run in gpu["runs"])
+    assert all("gpuCuda" in run["command"] for run in gpu["runs"])
+    assert all("host:cpu" in run["command"] for run in cpu["runs"])
+    assert all("cpuOmpBlocks" in run["command"] for run in cpu["runs"])
+    assert "CpuSerial" not in (experiment / "campaign-gpu.yaml").read_text()
+    assert "CpuSerial" not in (experiment / "campaign-cpu.yaml").read_text()
+
+    manifest = experiment / "campaign-pairs.txt"
+    rows = [
+        line
+        for line in manifest.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    ]
+    assert len(rows) == 3
+    digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    defaults = (ROSI / "experiment-01.env.sh").read_text(encoding="utf-8")
+    assert digest in defaults
+    assert "/home/th168408/workspace/alpakaTune-ml-runs/experiment-01" in defaults
 
 
 def test_gpu_jobs_are_exclusive_without_partition_or_srun():
