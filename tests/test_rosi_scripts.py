@@ -35,6 +35,7 @@ def test_allocation_metadata_records_loaded_modules():
 def test_module_setup_accepts_optional_experiment_defaults():
     script = (ROSI / "modules.sh").read_text(encoding="utf-8")
     assert "declare -F module" in script
+    assert "/etc/profile.d/lmod.sh" in script
     assert "/rosi/shared/lmod/lmod/init/bash" in script
     assert 'experiment-01.env.sh' in script
     assert 'source "${experiment_defaults}"' in script

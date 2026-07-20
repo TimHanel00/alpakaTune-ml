@@ -3,7 +3,10 @@
 set -euo pipefail
 
 if ! declare -F module >/dev/null; then
-    lmod_init="${BASH_ENV:-/rosi/shared/lmod/lmod/init/bash}"
+    lmod_init=/etc/profile.d/lmod.sh
+    if [[ ! -r "${lmod_init}" && -n "${MODULEPATH:-}" ]]; then
+        lmod_init="${BASH_ENV:-/rosi/shared/lmod/lmod/init/bash}"
+    fi
     if [[ ! -r "${lmod_init}" ]]; then
         printf 'Lmod initialization script is not readable: %s\n' "${lmod_init}" >&2
         return 1 2>/dev/null || exit 1
