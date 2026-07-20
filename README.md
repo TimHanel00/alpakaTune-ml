@@ -145,8 +145,9 @@ Cross-architecture claims require whole-device splits. Rosi experiment 01 is an
 A100-only pipeline check: its three repeated surfaces are median-aggregated,
 then configurations are deterministically split 80/10/10 with disjoint row IDs.
 It does not make an architecture-generalization claim. A subsequent targeted
-V100/A100/H100 campaign must restore whole-device splitting and hold out an
-entire architecture for final evaluation.
+campaign must restore whole-device splitting and hold out an entire architecture
+for final evaluation. On the currently advertised Rosi GPU partitions,
+architecture-balanced collection means V100, A100, H100, and B200.
 
 The six examples listed in `configs/campaign.example.yaml` have nine contexts
 and 318,432 candidates per device at the currently pinned alpakaTune revision.
