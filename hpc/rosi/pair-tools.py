@@ -174,6 +174,11 @@ def hardware() -> dict[str, Any]:
         },
         "gpus": gpus,
         "visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "module_stack": [
+            module
+            for module in os.environ.get("LOADEDMODULES", "").split(":")
+            if module
+        ],
     }
 
 

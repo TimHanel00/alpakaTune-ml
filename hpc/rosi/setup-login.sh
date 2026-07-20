@@ -71,6 +71,8 @@ if [[ ! -x "${training_venv}/bin/python" ]]; then
 fi
 # Rosi has no PyTorch module, so the training-only venv supplies it.
 "${training_venv}/bin/python" -m pip install -e "${ALPAKATUNE_ML_SOURCE}[train]"
+"${training_venv}/bin/python" -c \
+    'import torch; print(f"PyTorch {torch.__version__} import verified")'
 
 printf 'Prepared ML build root: %s\nDependency root: %s\nalpakaTune source: %s\nalpakaTune build: %s\nAlpaka baseline build: %s\nCollection venv: %s\nTraining venv: %s\n' \
     "${ALPAKATUNE_ML_BUILD}" \

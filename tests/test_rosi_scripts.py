@@ -20,6 +20,19 @@ def test_setup_is_git_free_and_fully_disconnected():
     assert "-Dalpaka_EXEC_CpuSerial=OFF" in script
     assert "-DalpakaTune_BUILD_TESTING=OFF" in script
     assert 'pip install -e "${ALPAKATUNE_ML_SOURCE}[plot]"' in script
+    assert "import torch" in script
+
+
+def test_allocation_metadata_records_loaded_modules():
+    script = (ROSI / "pair-tools.py").read_text(encoding="utf-8")
+    assert 'os.environ.get("LOADEDMODULES", "")' in script
+    assert '"module_stack"' in script
+
+
+def test_module_setup_accepts_optional_experiment_defaults():
+    script = (ROSI / "modules.sh").read_text(encoding="utf-8")
+    assert 'experiment-01.env.sh' in script
+    assert 'source "${experiment_defaults}"' in script
 
 
 def test_gpu_jobs_are_exclusive_without_partition_or_srun():
