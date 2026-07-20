@@ -63,7 +63,12 @@ def test_experiment_01_is_concrete_and_checksum_pinned():
     assert "/home/th168408/workspace/alpakaTune-ml-runs/experiment-01" in defaults
 
 
-def test_gpu_jobs_are_exclusive_without_partition_or_srun():
+def test_gpu_jobs_are_exclusive_across_all_gpu_partitions_without_srun():
+    all_gpu_partitions = (
+        "#SBATCH --partition=gpu-a100,gpu-a100-haicu,gpu-b200-casus,"
+        "gpu-b200-haicore,gpu-b200-haicore-mig,gpu-h100,gpu-h100-casus,"
+        "gpu-v100"
+    )
     for name in (
         "collect-paired-array.sbatch",
         "compare-strategies.sbatch",
@@ -72,8 +77,14 @@ def test_gpu_jobs_are_exclusive_without_partition_or_srun():
         script = (ROSI / name).read_text(encoding="utf-8")
         assert "#SBATCH --gres=gpu:1" in script
         assert "#SBATCH --exclusive" in script
-        assert "--partition" not in script
+        assert all_gpu_partitions in script
         assert "srun" not in script
+
+
+def test_training_checks_pytorch_gpu_inside_the_allocation():
+    script = (ROSI / "train-member-array.sbatch").read_text(encoding="utf-8")
+    assert "torch.cuda.is_available()" in script
+    assert "torch.cuda.get_device_name(0)" in script
 
 
 def test_comparison_uses_core_five_strategy_terminal_interface():
@@ -88,6 +99,8 @@ def test_comparison_uses_core_five_strategy_terminal_interface():
     assert "--tune-until-terminal" in script
     assert "--resume" in script
     assert "--no-plot" in script
+    assert "matrixMultiplication" in script
+    assert "baseline_examples=(boundaryIter grayScale heatEquation2D nBody vectorAdd)" in script
 
 
 def test_submit_comparison_supports_held_out_node_and_merge_dependency(tmp_path):

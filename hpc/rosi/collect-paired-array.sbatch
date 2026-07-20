@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
 #SBATCH --exclusive
+#SBATCH --partition=gpu-a100,gpu-a100-haicu,gpu-b200-casus,gpu-b200-haicore,gpu-b200-haicore-mig,gpu-h100,gpu-h100-casus,gpu-v100
 #SBATCH --array=0-2
 #SBATCH --time=24:00:00
 #SBATCH --output=slurm-%x-%A_%a.out

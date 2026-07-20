@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
 #SBATCH --exclusive
+#SBATCH --partition=gpu-a100,gpu-a100-haicu,gpu-b200-casus,gpu-b200-haicore,gpu-b200-haicore-mig,gpu-h100,gpu-h100-casus,gpu-v100
 #SBATCH --time=24:00:00
 #SBATCH --output=slurm-%x-%j.out
 #SBATCH --error=slurm-%x-%j.err
@@ -38,6 +39,8 @@ baseline_runner="${alpakatune_source}/benchmarks/run_baseline.py"
 visualizer="${alpakatune_source}/benchmarks/visualize.py"
 
 read -r -a examples <<< "${COMPARE_EXAMPLES:-boundaryIter grayScale heatEquation2D matrixMultiplication nBody vectorAdd}"
+# Upstream Alpaka has no matrixMultiplication example. It remains in every
+# tuned strategy comparison, but there is no artificial untuned baseline for it.
 baseline_examples=(boundaryIter grayScale heatEquation2D nBody vectorAdd)
 baseline_output="${COMPARE_OUTPUT}/baseline"
 gpu_output="${COMPARE_OUTPUT}/gpu"

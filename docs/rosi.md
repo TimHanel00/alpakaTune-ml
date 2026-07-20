@@ -6,8 +6,9 @@ two virtual environments. Collection, dataset construction, training, merging,
 baseline execution, strategy comparison, plotting, and evaluation all run as
 Slurm batch jobs.
 
-Every GPU job requests one node, one GPU, and `--exclusive`. No script selects a
-partition and no script uses `srun`.
+Every GPU job requests one node, one GPU, and `--exclusive`. The scripts list
+all advertised Rosi GPU partitions so scheduling is not tied to one accelerator
+family, and no script uses `srun`.
 
 ## 1. Prepare source dependencies locally
 
@@ -148,9 +149,11 @@ export ALPAKATUNE_ML_VENV="$ALPAKATUNE_ML_SOURCE/.venv"
 ```
 
 The helper pins the job with `--nodelist=$COMPARE_NODE`; when `MERGE_JOB_ID` is
-set it also uses `--dependency=afterok:$MERGE_JOB_ID`. It never selects a
-partition. The exclusive GPU-node job records its allocation, runs the instrumentation-free
-Alpaka examples ten times, then runs one GPU and one OpenMP benchmark campaign.
+set it also uses `--dependency=afterok:$MERGE_JOB_ID`. The exclusive GPU-node
+job records its allocation, runs the five instrumentation-free Alpaka examples
+ten times, then runs one GPU and one OpenMP benchmark campaign. Upstream Alpaka
+has no `matrixMultiplication` example, so that sixth workload remains in all
+tuned strategy traces without an invented untuned baseline.
 Each uses a 40,000-execution cap with exhaustive, random, simulated annealing,
 Bayesian optimization, and learned-hybrid in one invocation of the core benchmark
 runner, with `--model`, `--tune-until-terminal`, and `--resume`. Learned-hybrid

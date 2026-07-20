@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --exclusive
+#SBATCH --partition=gpu-a100,gpu-a100-haicu,gpu-b200-casus,gpu-b200-haicore,gpu-b200-haicore-mig,gpu-h100,gpu-h100-casus,gpu-v100
 #SBATCH --time=24:00:00
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
@@ -30,6 +31,8 @@ if [[ ! -x "${ml_venv}/bin/python" ]]; then
     echo "run hpc/rosi/setup-login.sh before submitting this array" >&2
     exit 2
 fi
+"${ml_venv}/bin/python" -c \
+    'import torch; raise SystemExit("PyTorch cannot access the allocated GPU") if not torch.cuda.is_available() else print(f"PyTorch GPU verified: {torch.cuda.get_device_name(0)}")'
 
 ensemble_size="$("${ml_venv}/bin/python" -c \
     'import sys; from pathlib import Path; from alpakatune_ml.training import load_training_config; print(load_training_config(Path(sys.argv[1]))["ensemble_size"])' \
