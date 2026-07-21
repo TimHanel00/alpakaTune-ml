@@ -11,7 +11,12 @@ def test_capped_exhaustive_is_reported_as_a_comparison_strategy(tmp_path: Path):
     device_id = "gpu-test"
     workload_id = "workload-test"
     surface_id = stable_id(
-        "surface", {"workload_id": workload_id, "device_id": device_id}
+        "surface",
+        {
+            "workload_id": workload_id,
+            "device_id": device_id,
+            "context_fingerprint": "context",
+        },
     )
     labels = tmp_path / "test.jsonl"
     rows = [

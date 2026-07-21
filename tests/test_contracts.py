@@ -20,6 +20,22 @@ def test_complete_exhaustive_history_produces_candidate_labels():
     assert len(rows[0]["dimension_features"][0]) == 18
 
 
+def test_context_fingerprint_separates_surfaces_and_rows(tmp_path):
+    document = json.loads(FIXTURE.read_text())
+    document["contexts"]["second-context"] = copy.deepcopy(
+        document["contexts"]["fixture-context"]
+    )
+    path = tmp_path / "history.json"
+    path.write_text(json.dumps(document))
+    first, second = load_history(path)
+    assert first.workload_id == second.workload_id
+    assert first.device_id == second.device_id
+    assert first.surface_id != second.surface_id
+    assert {row["row_id"] for row in first.rows()}.isdisjoint(
+        row["row_id"] for row in second.rows()
+    )
+
+
 def test_capped_exhaustive_history_is_rejected(tmp_path):
     document = json.loads(FIXTURE.read_text())
     context = document["contexts"]["fixture-context"]

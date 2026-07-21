@@ -88,7 +88,11 @@ class HistorySurface:
     def surface_id(self) -> str:
         return stable_id(
             "surface",
-            {"workload_id": self.workload_id, "device_id": self.device_id},
+            {
+                "workload_id": self.workload_id,
+                "device_id": self.device_id,
+                "context_fingerprint": self.fingerprint,
+            },
         )
 
     def validate_full_exhaustive(self) -> None:
