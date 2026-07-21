@@ -38,12 +38,10 @@ def build_ranker(
                 torch.nn.Linear(embedding_size, embedding_size),
                 torch.nn.ReLU(),
             )
-            self.adapters = torch.nn.ModuleDict(
-                {
-                    "cpu": torch.nn.Linear(embedding_size, 1),
-                    "gpu": torch.nn.Linear(embedding_size, 1),
-                }
-            )
+            # "cpu" is an existing torch.nn.Module method and therefore cannot
+            # be used as a ModuleDict child name on current PyTorch releases.
+            self.cpu_adapter = torch.nn.Linear(embedding_size, 1)
+            self.gpu_adapter = torch.nn.Linear(embedding_size, 1)
 
         def forward(self, dimensions, mask, context, device_class):
             encoded = self.token(dimensions)
@@ -53,8 +51,8 @@ def build_ranker(
             minimum = torch.finfo(encoded.dtype).min
             max_pool = encoded.masked_fill(~expanded_mask.bool(), minimum).max(dim=1).values
             embedding = self.context(torch.cat((mean_pool, max_pool, context), dim=1))
-            cpu = self.adapters["cpu"](embedding).squeeze(1)
-            gpu = self.adapters["gpu"](embedding).squeeze(1)
+            cpu = self.cpu_adapter(embedding).squeeze(1)
+            gpu = self.gpu_adapter(embedding).squeeze(1)
             prediction = torch.where(device_class.bool(), gpu, cpu)
             return prediction, embedding
 

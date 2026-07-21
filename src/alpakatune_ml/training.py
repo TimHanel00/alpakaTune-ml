@@ -216,24 +216,29 @@ def ranking_metrics(rows, predictions) -> dict[str, float]:
 
 def _artifact_tensors(models) -> list[tuple[str, np.ndarray]]:
     names = (
-        "token.0.weight",
-        "token.0.bias",
-        "token.2.weight",
-        "token.2.bias",
-        "context.0.weight",
-        "context.0.bias",
-        "context.2.weight",
-        "context.2.bias",
-        "adapters.cpu.weight",
-        "adapters.cpu.bias",
-        "adapters.gpu.weight",
-        "adapters.gpu.bias",
+        ("token.0.weight", "token.0.weight"),
+        ("token.0.bias", "token.0.bias"),
+        ("token.2.weight", "token.2.weight"),
+        ("token.2.bias", "token.2.bias"),
+        ("context.0.weight", "context.0.weight"),
+        ("context.0.bias", "context.0.bias"),
+        ("context.2.weight", "context.2.weight"),
+        ("context.2.bias", "context.2.bias"),
+        ("adapters.cpu.weight", "cpu_adapter.weight"),
+        ("adapters.cpu.bias", "cpu_adapter.bias"),
+        ("adapters.gpu.weight", "gpu_adapter.weight"),
+        ("adapters.gpu.bias", "gpu_adapter.bias"),
     )
     tensors = []
     for index, model in enumerate(models):
         state = model.state_dict()
-        for name in names:
-            tensors.append((f"members.{index}.{name}", state[name].detach().cpu().numpy()))
+        for artifact_name, state_name in names:
+            tensors.append(
+                (
+                    f"members.{index}.{artifact_name}",
+                    state[state_name].detach().cpu().numpy(),
+                )
+            )
     return tensors
 
 

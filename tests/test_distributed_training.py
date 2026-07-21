@@ -130,6 +130,46 @@ def _write_members(tmp_path, config, manifests, *, mismatched_member=None):
     return result
 
 
+def test_artifact_export_maps_internal_adapter_names_to_v1_contract():
+    class FakeTensor:
+        def detach(self):
+            return self
+
+        def cpu(self):
+            return self
+
+        def numpy(self):
+            return np.zeros((1,), dtype=np.float32)
+
+    class FakeModel:
+        def state_dict(self):
+            return {
+                name: FakeTensor()
+                for name in (
+                    "token.0.weight",
+                    "token.0.bias",
+                    "token.2.weight",
+                    "token.2.bias",
+                    "context.0.weight",
+                    "context.0.bias",
+                    "context.2.weight",
+                    "context.2.bias",
+                    "cpu_adapter.weight",
+                    "cpu_adapter.bias",
+                    "gpu_adapter.weight",
+                    "gpu_adapter.bias",
+                )
+            }
+
+    names = [name for name, _tensor in training._artifact_tensors([FakeModel()])]
+    assert names[-4:] == [
+        "members.0.adapters.cpu.weight",
+        "members.0.adapters.cpu.bias",
+        "members.0.adapters.gpu.weight",
+        "members.0.adapters.gpu.bias",
+    ]
+
+
 def test_merge_members_preserves_artifact_contract_without_torch(tmp_path, monkeypatch):
     config = _config(tmp_path)
     manifests = _manifests(tmp_path)
