@@ -60,6 +60,11 @@ cmake -S "${alpaka_source}" -B "${ALPAKA_BASELINE_BUILD}" \
 
 collection_venv="${ALPAKATUNE_COLLECTION_VENV:-${ALPAKATUNE_ML_SOURCE}/.venv}"
 training_venv="${ALPAKATUNE_TRAINING_VENV:-${ALPAKATUNE_ML_SOURCE}/.venv-train}"
+torch_version="${ALPAKATUNE_TORCH_VERSION:-2.11.0+cu128}"
+torch_index_url="${ALPAKATUNE_TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
+export TMPDIR="${ALPAKATUNE_TMPDIR:-${ALPAKATUNE_ML_SOURCE}/.tmp}"
+export PIP_CACHE_DIR="${ALPAKATUNE_PIP_CACHE_DIR:-${ALPAKATUNE_ML_SOURCE}/.pip-cache}"
+mkdir -p "${TMPDIR}" "${PIP_CACHE_DIR}"
 
 if [[ ! -x "${collection_venv}/bin/python" ]]; then
     python -m venv "${collection_venv}"
@@ -69,8 +74,12 @@ fi
 if [[ ! -x "${training_venv}/bin/python" ]]; then
     python -m venv "${training_venv}"
 fi
-# Rosi has no PyTorch module, so the training-only venv supplies it.
-"${training_venv}/bin/python" -m pip install -e "${ALPAKATUNE_ML_SOURCE}[train]"
+# Rosi has no PyTorch module. Pin the CUDA 12.8 wheel to the loaded module and
+# cluster driver instead of allowing pip to select a newer CUDA wheel.
+"${training_venv}/bin/python" -m pip install -e "${ALPAKATUNE_ML_SOURCE}"
+"${training_venv}/bin/python" -m pip install \
+    "torch==${torch_version}" \
+    --index-url "${torch_index_url}"
 "${training_venv}/bin/python" -c \
     'import torch; print(f"PyTorch {torch.__version__} import verified")'
 

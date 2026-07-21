@@ -23,6 +23,10 @@ def test_setup_is_git_free_and_fully_disconnected():
     assert "-Dalpaka_EXEC_CpuSerial=OFF" in script
     assert "-DalpakaTune_BUILD_TESTING=OFF" in script
     assert 'pip install -e "${ALPAKATUNE_ML_SOURCE}[plot]"' in script
+    assert "2.11.0+cu128" in script
+    assert "https://download.pytorch.org/whl/cu128" in script
+    assert 'PIP_CACHE_DIR="${ALPAKATUNE_PIP_CACHE_DIR:-${ALPAKATUNE_ML_SOURCE}/.pip-cache}"' in script
+    assert 'TMPDIR="${ALPAKATUNE_TMPDIR:-${ALPAKATUNE_ML_SOURCE}/.tmp}"' in script
     assert "import torch" in script
 
 
