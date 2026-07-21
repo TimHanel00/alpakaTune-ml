@@ -101,6 +101,8 @@ def test_training_checks_pytorch_gpu_inside_the_allocation():
     script = (ROSI / "train-member-array.sbatch").read_text(encoding="utf-8")
     assert "torch.cuda.is_available()" in script
     assert "torch.cuda.get_device_name(0)" in script
+    assert 'sys.exit("PyTorch cannot access the allocated GPU")' in script
+    assert "raise SystemExit" not in script
 
 
 def test_comparison_uses_core_five_strategy_terminal_interface():

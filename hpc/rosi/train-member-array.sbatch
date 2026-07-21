@@ -35,7 +35,7 @@ if [[ ! -x "${ml_venv}/bin/python" ]]; then
     exit 2
 fi
 "${ml_venv}/bin/python" -c \
-    'import torch; raise SystemExit("PyTorch cannot access the allocated GPU") if not torch.cuda.is_available() else print(f"PyTorch GPU verified: {torch.cuda.get_device_name(0)}")'
+    'import sys, torch; sys.exit("PyTorch cannot access the allocated GPU") if not torch.cuda.is_available() else print(f"PyTorch GPU verified: {torch.cuda.get_device_name(0)}")'
 
 ensemble_size="$("${ml_venv}/bin/python" -c \
     'import sys; from pathlib import Path; from alpakatune_ml.training import load_training_config; print(load_training_config(Path(sys.argv[1]))["ensemble_size"])' \
