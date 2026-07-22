@@ -10,12 +10,13 @@ ALPAKATUNE_ML_BUILD="${ALPAKATUNE_ML_BUILD:-${ALPAKATUNE_ML_SOURCE}/build}"
 ALPAKATUNE_SOURCE="${ALPAKATUNE_ML_SOURCE}/alpaka3-tuner"
 ALPAKATUNE_BUILD="${ALPAKATUNE_ML_BUILD}/alpaka3-tuner"
 ALPAKA_BASELINE_BUILD="${ALPAKATUNE_ML_BUILD}/alpaka-baseline"
+ALPAKA_GPU_BASELINE_BUILD="${ALPAKATUNE_ML_BUILD}/alpaka-baseline-gpu"
 ALPAKATUNE_DEPENDENCY_ROOT="${ALPAKATUNE_DEPENDENCY_ROOT:-${ALPAKATUNE_ML_SOURCE}/dependencies}"
 alpaka_source="${ALPAKATUNE_DEPENDENCY_ROOT}/alpaka3"
 yaml_cpp_source="${ALPAKATUNE_DEPENDENCY_ROOT}/yaml_cpp"
 nlohmann_json_source="${ALPAKATUNE_DEPENDENCY_ROOT}/nlohmann_json"
 export ALPAKATUNE_ML_BUILD ALPAKATUNE_SOURCE ALPAKATUNE_BUILD \
-    ALPAKA_BASELINE_BUILD ALPAKATUNE_DEPENDENCY_ROOT
+    ALPAKA_BASELINE_BUILD ALPAKA_GPU_BASELINE_BUILD ALPAKATUNE_DEPENDENCY_ROOT
 
 for dependency_source in "${alpaka_source}" "${yaml_cpp_source}" "${nlohmann_json_source}"; do
     if [[ ! -f "${dependency_source}/CMakeLists.txt" ]]; then
@@ -58,6 +59,20 @@ cmake -S "${alpaka_source}" -B "${ALPAKA_BASELINE_BUILD}" \
     -DFETCHCONTENT_FULLY_DISCONNECTED=ON
 (cd "${ALPAKA_BASELINE_BUILD}" && make -j)
 
+# The bounded-pool validation is GPU-only, including its untuned baseline.
+cmake -S "${alpaka_source}" -B "${ALPAKA_GPU_BASELINE_BUILD}" \
+    -G "Unix Makefiles" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CUDA_FLAGS_RELEASE="-O2 -DNDEBUG" \
+    -Dalpaka_EXAMPLES=ON \
+    -Dalpaka_DEP_CUDA=ON \
+    -Dalpaka_DEP_OMP=OFF \
+    -Dalpaka_EXEC_CpuSerial=OFF \
+    -Dalpaka_EXEC_CpuOmpBlocks=OFF \
+    -Dalpaka_EXEC_GpuCuda=ON \
+    -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+(cd "${ALPAKA_GPU_BASELINE_BUILD}" && make -j)
+
 collection_venv="${ALPAKATUNE_COLLECTION_VENV:-${ALPAKATUNE_ML_SOURCE}/.venv}"
 training_venv="${ALPAKATUNE_TRAINING_VENV:-${ALPAKATUNE_ML_SOURCE}/.venv-train}"
 torch_version="${ALPAKATUNE_TORCH_VERSION:-2.11.0+cu128}"
@@ -83,11 +98,12 @@ fi
 "${training_venv}/bin/python" -c \
     'import torch; print(f"PyTorch {torch.__version__} import verified")'
 
-printf 'Prepared ML build root: %s\nDependency root: %s\nalpakaTune source: %s\nalpakaTune build: %s\nAlpaka baseline build: %s\nCollection venv: %s\nTraining venv: %s\n' \
+printf 'Prepared ML build root: %s\nDependency root: %s\nalpakaTune source: %s\nalpakaTune build: %s\nAlpaka baseline build: %s\nGPU-only Alpaka baseline build: %s\nCollection venv: %s\nTraining venv: %s\n' \
     "${ALPAKATUNE_ML_BUILD}" \
     "${ALPAKATUNE_DEPENDENCY_ROOT}" \
     "${ALPAKATUNE_SOURCE}" \
     "${ALPAKATUNE_BUILD}" \
     "${ALPAKA_BASELINE_BUILD}" \
+    "${ALPAKA_GPU_BASELINE_BUILD}" \
     "${collection_venv}" \
     "${training_venv}"

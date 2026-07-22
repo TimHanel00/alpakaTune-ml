@@ -45,7 +45,9 @@ The script configures `$ALPAKATUNE_ML_SOURCE/alpaka3-tuner` directly into
 disabled, and runtime tests disabled. It builds from that directory using
 `make -j`. It also configures and builds the pre-synced `dependencies/alpaka3`
 examples without alpakaTune instrumentation under
-`$ALPAKATUNE_ML_BUILD/alpaka-baseline`.
+`$ALPAKATUNE_ML_BUILD/alpaka-baseline`. A second baseline build at
+`$ALPAKATUNE_ML_BUILD/alpaka-baseline-gpu` disables both host executors so the
+bounded-pool validation does not execute CPU measurements.
 
 The collection environment is `$ALPAKATUNE_ML_SOURCE/.venv` by default and
 includes plotting support. The training environment is
@@ -117,6 +119,26 @@ presented as cross-device generalization. Split assignment is automatic:
 The generated split YAML defaults to `${DATASET_OUTPUT}.splits.yaml`; override it
 with `PAIR_SPLIT_CONFIG`. A completed immutable dataset is checksum-validated and
 skipped on resubmission. A partial nonempty dataset remains a hard error.
+
+## 5. Validate the bounded learned pool
+
+After the experiment-01 model exists, submit the focused live comparison from
+an interactive Rosi login shell:
+
+```bash
+export ALPAKATUNE_ML_SOURCE=/home/th168408/workspace/alpakaTune-ml
+bash "$ALPAKATUNE_ML_SOURCE/hpc/rosi/submit-bounded-pool.sh"
+```
+
+The job may use any advertised GPU partition. It runs the learned strategy
+first, followed by exhaustive, random, simulated annealing, and Bayesian
+optimization, for `matrixMultiplication` and `vectorAdd` with a 4000-launch
+limit. Validation overrides the production pool/batch defaults with 64/16 and
+fails unless persisted diagnostics prove that the pool stayed bounded and was
+refilled. The untuned `vectorAdd` baseline comes from the CUDA-only baseline
+build; upstream Alpaka has no `matrixMultiplication` baseline. Results and plots
+are written below
+`/home/th168408/workspace/alpakaTune-ml-runs/experiment-02/evaluations/bounded-pool`.
 
 ## 5. Submit three-member training and merge
 

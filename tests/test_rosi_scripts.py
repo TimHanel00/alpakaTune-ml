@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -22,6 +23,9 @@ def test_setup_is_git_free_and_fully_disconnected():
     assert '-DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="${nlohmann_json_source}"' in script
     assert "-Dalpaka_EXEC_CpuSerial=OFF" in script
     assert "-DalpakaTune_BUILD_TESTING=OFF" in script
+    assert 'ALPAKA_GPU_BASELINE_BUILD="${ALPAKATUNE_ML_BUILD}/alpaka-baseline-gpu"' in script
+    assert "-Dalpaka_DEP_OMP=OFF" in script
+    assert "-Dalpaka_EXEC_CpuOmpBlocks=OFF" in script
     assert 'pip install -e "${ALPAKATUNE_ML_SOURCE}[plot]"' in script
     assert "2.11.0+cu128" in script
     assert "https://download.pytorch.org/whl/cu128" in script
@@ -89,6 +93,7 @@ def test_gpu_jobs_are_exclusive_across_all_gpu_partitions_without_srun():
         "collect-paired-array.sbatch",
         "compare-strategies.sbatch",
         "train-member-array.sbatch",
+        "validate-bounded-pool.sbatch",
     ):
         script = (ROSI / name).read_text(encoding="utf-8")
         assert "#SBATCH --gres=gpu:1" in script
@@ -119,6 +124,79 @@ def test_comparison_uses_core_five_strategy_terminal_interface():
     assert "--no-plot" in script
     assert "matrixMultiplication" in script
     assert "baseline_examples=(boundaryIter grayScale heatEquation2D nBody vectorAdd)" in script
+
+
+def test_bounded_pool_validation_is_gpu_only_and_separately_persisted():
+    script = (ROSI / "validate-bounded-pool.sbatch").read_text(encoding="utf-8")
+    assert "matrixMultiplication vectorAdd" in script
+    assert (
+        "--strategies learned_hybrid exhaustive random simulated_annealing "
+        "bayesian_optimization"
+    ) in script
+    assert "--learned-candidate-pool-size" in script
+    assert "--learned-candidate-batch-size" in script
+    assert "--maximum-executions 4000" in script
+    assert "--backend cuda:nvidiaGpu" in script
+    assert "--executor gpuCuda" in script
+    assert "host:cpu" not in script
+    assert "cpuOmpBlocks" not in script
+    assert "CpuSerial" not in script
+    assert "alpaka-baseline-gpu" in script
+    assert "experiment-02/evaluations/bounded-pool" in script
+    assert "experiment-01/artifacts/rosi/experiment-01/model.atml" in script
+
+    validator = (ROSI / "validate-bounded-pool.py").read_text(encoding="utf-8")
+    assert 'learning.get("status")' in validator
+    assert '"peak_cached_candidate_count"' in validator
+    assert 'learning.get("pool_refill_count")' in validator
+
+
+def test_bounded_pool_validator_accepts_refilled_bounded_history(tmp_path):
+    output = tmp_path / "gpu"
+    history_path = output / "vectorAdd/learned_hybrid/history.json"
+    history_path.parent.mkdir(parents=True)
+    history_path.write_text(
+        json.dumps(
+            {
+                "contexts": {
+                    "context": {
+                        "completion_reason": "maximum_executions",
+                        "metadata": {"kernel": "VectorAddKernel"},
+                        "learning": {
+                            "status": "active",
+                            "candidate_pool_capacity": 64,
+                            "candidate_batch_size": 16,
+                            "cached_candidate_count": 48,
+                            "peak_cached_candidate_count": 64,
+                            "scored_candidate_count": 2080,
+                            "pool_refill_count": 17,
+                            "candidate_stream_exhausted": False,
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            "python3",
+            str(ROSI / "validate-bounded-pool.py"),
+            str(output),
+            "--pool-size",
+            "64",
+            "--batch-size",
+            "16",
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    report = json.loads(
+        (output / "bounded-pool-validation.json").read_text(encoding="utf-8")
+    )
+    assert report["valid"] is True
 
 
 def test_submit_comparison_supports_held_out_node_and_merge_dependency(tmp_path):
